@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title></title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+  html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  body {
+    background: black;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  canvas {
+    border: 1px solid white;
+    max-width: 100%;
+    max-height: 100%;
+  }
+
+  @media screen and (max-width: 768px) {
+    canvas {
+      width: 100%;
+      height: auto;
+    }
+  }
+  </style>
+</head>
+<body>
+<canvas width="400" height="400" id="game"></canvas>
+<script>
+var canvas = document.getElementById('game');
+var context = canvas.getContext('2d');
+
+var yuriImg = new Image();
+yuriImg.src = 'yuri.jpg';
+var burgerImg = new Image();
+burgerImg.src = 'burger.jpg';
+
+function resizeCanvas() {
+  if (window.innerWidth <= 768) {
+    canvas.width = window.innerWidth * 0.9;
+    canvas.height = canvas.width;
+  } else {
+    canvas.width = 400;
+    canvas.height = 400;
+  }
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+var grid = 16;
+var count = 0;
+  
+var snake = {
+  x: 160,
+  y: 160,
+  dx: grid,
+  dy: 0,
+  cells: [],
+  maxCells: 4
+};
+var apple = {
+  x: 320,
+  y: 320
+};
+
+function getRandomInt(min, max) {
+  return Math.floor(Math.random() * (max - min)) + min;
+}
+
+function loop() {
+  requestAnimationFrame(loop);
+  if (++count < 6) { // Zmieniono z 4 na 6, aby spowolnić grę (10 FPS)
+    return;
+  }
+
+  count = 0;
+  context.clearRect(0,0,canvas.width,canvas.height);
+
+  snake.x += snake.dx;
+  snake.y += snake.dy;
+
+  if (snake.x < 0) {
+    snake.x = canvas.width - grid;
+  }
+  else if (snake.x >= canvas.width) {
+    snake.x = 0;
+  }
+  
+  if (snake.y < 0) {
+    snake.y = canvas.height - grid;
+  }
+  else if (snake.y >= canvas.height) {
+    snake.y = 0;
+  }
+
+  snake.cells.unshift({x: snake.x, y: snake.y});
+  if (snake.cells.length > snake.maxCells) {
+    snake.cells.pop();
+  }
+
+  if (burgerImg.complete && burgerImg.naturalWidth !== 0) {
+    context.drawImage(burgerImg, apple.x, apple.y, grid, grid);
+  } else {
+    context.fillStyle = 'red';
+    context.fillRect(apple.x, apple.y, grid-1, grid-1);
+  }
+
+  if (yuriImg.complete && yuriImg.naturalWidth !== 0) {
+    snake.cells.forEach(function(cell, index) {
+      context.drawImage(yuriImg, cell.x, cell.y, grid, grid);
+      
+      if (cell.x === apple.x && cell.y === apple.y && index === 0) {
+        snake.maxCells++;
+        apple.x = getRandomInt(0, Math.floor(canvas.width/grid)) * grid;
+        apple.y = getRandomInt(0, Math.floor(canvas.height/grid)) * grid;
+      }
+
+      for (var i = index + 1; i < snake.cells.length; i++) {
+        if (cell.x === snake.cells[i].x && cell.y === snake.cells[i].y) {
+          snake.x = 160;
+          snake.y = 160;
+          snake.cells = [];
+          snake.maxCells = 4;
+          snake.dx = grid;
+          snake.dy = 0;
+          apple.x = getRandomInt(0, Math.floor(canvas.width/grid)) * grid;
+          snake.y = getRandomInt(0, Math.floor(canvas.height/grid)) * grid;
+        }
+      }
+    });
+  }
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.which === 37 && snake.dx === 0) {
+    snake.dx = -grid;
+    snake.dy = 0;
+  }
+  else if (e.which === 38 && snake.dy === 0) {
+    snake.dy = -grid;
+    snake.dx = 0;
+  }
+  else if (e.which === 39 && snake.dx === 0) {
+    snake.dx = grid;
+    snake.dy = 0;
+  }
+  else if (e.which === 40 && snake.dy === 0) {
+    snake.dy = grid;
+    snake.dx = 0;
+  }
+});
+
+let touchStartX = 0;
+let touchStartY = 0;
+
+document.addEventListener('touchstart', e => {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+});
+
+document.addEventListener('touchmove', e => {
+  e.preventDefault();
+  const touchEndX = e.touches[0].clientX;
+  const touchEndY = e.touches[0].clientY;
+  
+  const dx = touchEndX - touchStartX;
+  const dy = touchEndY - touchStartY;
+
+  if (Math.abs(dx) > Math.abs(dy)) {
+    if (dx > 0 && snake.dx === 0) {
+      snake.dx = grid;
+      snake.dy = 0;
+    } else if (dx < 0 && snake.dx === 0) {
+      snake.dx = -grid;
+      snake.dy = 0;
+    }
+  } else {
+    if (dy > 0 && snake.dy === 0) {
+      snake.dy = grid;
+      snake.dx = 0;
+    } else if (dy < 0 && snake.dy === 0) {
+      snake.dy = -grid;
+      snake.dx = 0;
+    }
+  }
+}, { passive: false });
+
+Promise.all([
+  new Promise(resolve => yuriImg.onload = resolve),
+  new Promise(resolve => burgerImg.onload = resolve)
+]).then(() => requestAnimationFrame(loop));
+</script>
+</body>
+</html>
